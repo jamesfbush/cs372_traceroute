@@ -69,6 +69,9 @@ class IcmpHelperLibrary:
 
         __DEBUG_IcmpPacket = False      # Allows for debug output
 
+        # 220714 JFB add 
+        __replyRtt = 0 
+
         # ############################################################################################################ #
         # IcmpPacket Class Getters                                                                                     #
         #                                                                                                              #
@@ -131,6 +134,13 @@ class IcmpHelperLibrary:
 
         def setTtl(self, ttl):
             self.__ttl = ttl
+
+        # 220714 JFB add 
+        def getReplyRtt(self):
+            return self.__replyRtt
+        def setReplyRtt(self, rtt):
+            self.__replyRtt = rtt
+
 
         # ############################################################################################################ #
         # IcmpPacket Class Private Functions                                                                           #
@@ -322,6 +332,8 @@ class IcmpHelperLibrary:
                         icmpValidationData = [icmpPacketSequenceNumber,icmpPacketIdentifer,icmpPacketData]
                         ########################
                         icmpReplyPacket.printResultToConsole(self.getTtl(), timeReceived, addr, icmpValidationData) #220713 JFB add icmpValidationData
+                        print("***RTT reply:",icmpReplyPacket.getReplyRtt()) #***HEERE
+                        self.setReplyRtt(icmpReplyPacket.getReplyRtt())#220714 JFB add go further out
                         return      # Echo reply is the end and therefore should return
 
                     else:
@@ -376,10 +388,12 @@ class IcmpHelperLibrary:
         # 220712 JFB Added 
         # Create variables within the IcmpPacket_EchoReply class that identify whether 
         # each value that can be obtained from the class is valid. 
-        _icmpIdentifier_isValid = False
-        _icmpSequenceNumber_isValid = False
-        _icmpData_isValid = False
+        __icmpIdentifier_isValid = False
+        __icmpSequenceNumber_isValid = False
+        __icmpData_isValid = False
         ############################
+        # 220714 JFB Added 
+        __replyRtt = 0 
 
         # ############################################################################################################ #
         # IcmpPacket_EchoReply Constructors                                                                            #
@@ -452,26 +466,34 @@ class IcmpHelperLibrary:
         # TODO add some documentation here 
             
         def setIcmpSequenceNumber_isValid(self):
-            self._icmpSequenceNumber_isValid = True
+            self.__icmpSequenceNumber_isValid = True
 
         def setIcmpIdentifier_isValid(self):
-            self._icmpIdentifier_isValid = True
+            self.__icmpIdentifier_isValid = True
             
         def setIcmpData_isValid(self):
-            self._icmpData_isValid = True 
+            self.__icmpData_isValid = True 
 
         #  getter functions for each validation variable 
         def getIcmpSequenceNumber_isValid(self):
-            return self._icmpSequenceNumber_isValid
+            return self.__icmpSequenceNumber_isValid
 
         def getIcmpIdentifier_isValid(self):
-            return self._icmpIdentifier_isValid
+            return self.__icmpIdentifier_isValid
             
         def getIcmpData_isValid(self):
-            return self._icmpData_isValid 
+            return self.__icmpData_isValid 
 
         #########################
 
+        # 220714 JFB add
+        def getReplyRtt(self):
+            return self.__replyRtt
+            
+        def setReplyRtt(self, rtt):
+            self.__replyRtt = rtt
+
+        ##########################
 
         def isValidResponse(self):
             return self.__isValidResponse
@@ -507,10 +529,13 @@ class IcmpHelperLibrary:
         def printResultToConsole(self, ttl, timeReceived, addr, icmpValidationData):
             bytes = struct.calcsize("d")
             timeSent = struct.unpack("d", self.__recvPacket[28:28 + bytes])[0]
+            # 220714 JFB add 
+            rtt = (timeReceived - timeSent) * 1000
+            self.__replyRtt = rtt
             print("  TTL=%d    RTT=%.0f ms    Type=%d    Code=%d        Identifier=%d    Sequence Number=%d    %s" %
                   (
                       ttl,
-                      (timeReceived - timeSent) * 1000,
+                      rtt, #(timeReceived - timeSent) * 1000,
                       self.getIcmpType(),
                       self.getIcmpCode(),
                       self.getIcmpIdentifier(),
@@ -524,9 +549,9 @@ class IcmpHelperLibrary:
             # TODO these should be getters 
             # TODO work on the conditional debugs below 
             print("-"*66,"\nVALIDATION RESULTS")
-            for i in (  [self._icmpSequenceNumber_isValid, "ICMP sequence number",icmpValidationData[0], self.getIcmpSequenceNumber()],
-                        [self._icmpIdentifier_isValid, "ICMP identifier", icmpValidationData[1], self.getIcmpIdentifier()],
-                        [self._icmpData_isValid, "ICMP data", icmpValidationData[2], self.getIcmpData()]
+            for i in (  [self.__icmpSequenceNumber_isValid, "ICMP sequence number",icmpValidationData[0], self.getIcmpSequenceNumber()],
+                        [self.__icmpIdentifier_isValid, "ICMP identifier", icmpValidationData[1], self.getIcmpIdentifier()],
+                        [self.__icmpData_isValid, "ICMP data", icmpValidationData[2], self.getIcmpData()]
                     ):
                     if i[0] is True:
                         print(f"{i[1]} is valid.")
@@ -563,8 +588,12 @@ class IcmpHelperLibrary:
     def __sendIcmpEchoRequest(self, host):
         print("sendIcmpEchoRequest Started...") if self.__DEBUG_IcmpHelperLibrary else 0
 
-        for i in range(4):
+        rttTimes = [] #220714 JFB add track cumulative RTT
+        echoRequests = 4
+
+        for i in range(echoRequests):
             # Build packet
+            
             icmpPacket = IcmpHelperLibrary.IcmpPacket()
 
             randomIdentifier = (os.getpid() & 0xffff)      # Get as 16 bit number - Limit based on ICMP header standards
@@ -580,6 +609,11 @@ class IcmpHelperLibrary:
             icmpPacket.printIcmpPacketHeader_hex() if self.__DEBUG_IcmpHelperLibrary else 0
             icmpPacket.printIcmpPacket_hex() if self.__DEBUG_IcmpHelperLibrary else 0
             # we should be confirming values are correct, such as identifier and sequence number and data
+
+            # 220714 JFB add - to get cumulative RTT
+            replyRtt = icmpPacket.getReplyRtt()
+            rttTimes.append(replyRtt) # LEFT OFF HERE
+        print("RTT min:",round(min(rttTimes),2),"RTT max:",round(max(rttTimes),2), "RTT avg:",round((sum(rttTimes)/echoRequests),2))
 
     def __sendIcmpTraceRoute(self, host):
         print("sendIcmpTraceRoute Started...") if self.__DEBUG_IcmpHelperLibrary else 0
