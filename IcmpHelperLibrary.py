@@ -212,63 +212,36 @@ class IcmpHelperLibrary:
             ########################################
             # JFB add 220710 within these lines
             # http://www.networksorcery.com/enp/protocol/icmp/msg0.htm
-            #
+            
             # Confirm the following items received are the same as what was sent
 
-            # TODO - need to move all this print logic down to printResultToConsole() 
-
-            print("-"*60)
-            print("Debug log")
-            print("-"*60)
-            # Sequence number 
-            if self.getPacketSequenceNumber()== icmpReplyPacket.getIcmpSequenceNumber():
+            # Check sequence number 
+            if self.getPacketSequenceNumber() == icmpReplyPacket.getIcmpSequenceNumber():
                 icmpReplyPacket.setIcmpSequenceNumber_isValid()
-                # print("Icmp sequence number is valid.\n")
 
-            # Debug message 
-            # else:
-            #     print("**Reply packet sequence number NOT valid.**")
-            #     print(f"\tExpected reply: {self.getPacketSequenceNumber()}\n\tActual reply:{icmpReplyPacket.getIcmpSequenceNumber()}\n")
-
-            # Packet identifier 
+            # Check packet identifier 
             if self.getPacketIdentifier() == icmpReplyPacket.getIcmpIdentifier(): 
                 icmpReplyPacket.setIcmpIdentifier_isValid()
-                # print("Icmp packet identifier is valid.\n")
 
-            # Debug message 
-            # else:
-            #     print("**Reply packet identifier number NOT valid.**")
-            #     print(f"\tExpected reply: {self.getPacketIdentifier()}\n\tActual reply:{icmpReplyPacket.getIcmpIdentifier()}\n")
-
-            # Raw data 
-            if self.getDataRaw() == 'icmpReplyPacket.getIcmpData()':
+            # Check raw data 
+            if self.getDataRaw() == icmpReplyPacket.getIcmpData():
                 icmpReplyPacket.setIcmpData_isValid()
-                # print("Icmp data is valid.\n")
 
-            # Debug message 
-            # else:
-            #     print("**Reply packet data NOT valid.**")
-            #     print(f"\tExpected reply: {self.getDataRaw()}\n\tActual reply:{icmpReplyPacket.getIcmpData()}\n")
-
-
-            # Set valid data variable in IcmpPacket_EchoReply class based outcome 
+            # Set the valid data variable in the IcmpPacket_EchoReply class based on the
+            # outcome of the data comparison 
             if icmpReplyPacket.getIcmpIdentifier_isValid() and \
                 icmpReplyPacket.getIcmpSequenceNumber_isValid() and \
                 icmpReplyPacket.getIcmpData_isValid():
-            
+
+                # All true is valid response 
                 icmpReplyPacket.setIsValidResponse(True)
-                # Debug message:
 
             else:
-                # one or more comparisons fail, set False
+                # One or more comparisons fail, set False
                 icmpReplyPacket.setIsValidResponse(False)
-                # print("-"*68)
-                # print("** One or more replies did not match. Please see debug log above. **")
-                # print("-"*68)
 
             ########################################
-            #icmpReplyPacket.setIsValidResponse(True)
-            #pass
+
 
         # ############################################################################################################ #
         # IcmpPacket Class Public Functions                                                                            #
@@ -401,6 +374,8 @@ class IcmpHelperLibrary:
         __isValidResponse = False
         ############################
         # 220712 JFB Added 
+        # Create variables within the IcmpPacket_EchoReply class that identify whether 
+        # each value that can be obtained from the class is valid. 
         _icmpIdentifier_isValid = False
         _icmpSequenceNumber_isValid = False
         _icmpData_isValid = False
@@ -485,6 +460,7 @@ class IcmpHelperLibrary:
         def setIcmpData_isValid(self):
             self._icmpData_isValid = True 
 
+        #  getter functions for each validation variable 
         def getIcmpSequenceNumber_isValid(self):
             return self._icmpSequenceNumber_isValid
 
@@ -555,7 +531,6 @@ class IcmpHelperLibrary:
                     if i[0] is True:
                         print(f"{i[1]} is valid.")
                     else:
-                        "\033[91m Difference Line {i}\033[00m"
                         print(f"\033[91m{i[1]} is NOT valid.\n\t* Actual reply: \t{i[3]}\n\t* Expected reply: \t{i[2]}\033[00m ")
             print("-"*66)
                         # f"\tExpected reply: {IcmpPacket.getDataRaw()}\n\tActual reply:{self.getIcmpData()}\n"
