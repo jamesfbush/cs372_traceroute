@@ -71,6 +71,8 @@ class IcmpHelperLibrary:
 
         # 220714 JFB add 
         __replyRtt = 0 
+        # 220715 JFB add
+        __replyDropped = False
 
         # ############################################################################################################ #
         # IcmpPacket Class Getters                                                                                     #
@@ -141,6 +143,11 @@ class IcmpHelperLibrary:
         def setReplyRtt(self, rtt):
             self.__replyRtt = rtt
 
+        # 220715 JFB add
+        def setReplyDropped(self):
+            self.__replyDropped = True 
+        def getReplyDropped(self):
+            return self.__replyDropped
 
         # ############################################################################################################ #
         # IcmpPacket Class Private Functions                                                                           #
@@ -337,7 +344,8 @@ class IcmpHelperLibrary:
                         return      # Echo reply is the end and therefore should return
 
                     else:
-                        print("error")
+                        print("error") #IS THIS WHERE PACKETS ARE DROPPED?
+                        self.setReplyDropped() # 220715 JFB
             except timeout:
                 print("  *        *        *        *        *    Request timed out (By Exception).")
             finally:
@@ -589,6 +597,7 @@ class IcmpHelperLibrary:
         print("sendIcmpEchoRequest Started...") if self.__DEBUG_IcmpHelperLibrary else 0
 
         rttTimes = [] #220714 JFB add track cumulative RTT
+        droppedReplies = 1
         echoRequests = 4
 
         for i in range(echoRequests):
@@ -612,8 +621,12 @@ class IcmpHelperLibrary:
 
             # 220714 JFB add - to get cumulative RTT
             replyRtt = icmpPacket.getReplyRtt()
+            if icmpPacket.getReplyDropped():
+                droppedReplies += 1
             rttTimes.append(replyRtt) # LEFT OFF HERE
         print("RTT min:",round(min(rttTimes),2),"RTT max:",round(max(rttTimes),2), "RTT avg:",round((sum(rttTimes)/echoRequests),2))
+        # 220715 JFB add - is this all right, data member in the ICMP packet, conditional on the 'error' logic under icmppacket/
+        print(f"Packet loss: { ((echoRequests-(echoRequests-droppedReplies)) / echoRequests)*100}%")
 
     def __sendIcmpTraceRoute(self, host):
         print("sendIcmpTraceRoute Started...") if self.__DEBUG_IcmpHelperLibrary else 0
