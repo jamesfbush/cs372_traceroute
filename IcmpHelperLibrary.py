@@ -344,7 +344,7 @@ class IcmpHelperLibrary:
                         return      # Echo reply is the end and therefore should return
 
                     else:
-                        print("error") #IS THIS WHERE PACKETS ARE DROPPED?
+                        print("error") #IS THIS WHERE PACKETS ARE LOST?
                         self.setReplyDropped() # 220715 JFB
             except timeout:
                 print("  *        *        *        *        *    Request timed out (By Exception).")
@@ -556,7 +556,7 @@ class IcmpHelperLibrary:
             # Print results of reply validation with debug
             # TODO these should be getters 
             # TODO work on the conditional debugs below 
-            print("-"*66,"\nVALIDATION RESULTS")
+            print("\nVALIDATION RESULTS")
             for i in (  [self.__icmpSequenceNumber_isValid, "ICMP sequence number",icmpValidationData[0], self.getIcmpSequenceNumber()],
                         [self.__icmpIdentifier_isValid, "ICMP identifier", icmpValidationData[1], self.getIcmpIdentifier()],
                         [self.__icmpData_isValid, "ICMP data", icmpValidationData[2], self.getIcmpData()]
@@ -597,7 +597,7 @@ class IcmpHelperLibrary:
         print("sendIcmpEchoRequest Started...") if self.__DEBUG_IcmpHelperLibrary else 0
 
         rttTimes = [] #220714 JFB add track cumulative RTT
-        droppedReplies = 1
+        droppedReplies = 0
         echoRequests = 4
 
         for i in range(echoRequests):
@@ -619,14 +619,24 @@ class IcmpHelperLibrary:
             icmpPacket.printIcmpPacket_hex() if self.__DEBUG_IcmpHelperLibrary else 0
             # we should be confirming values are correct, such as identifier and sequence number and data
 
+            ##########################################
             # 220714 JFB add - to get cumulative RTT
             replyRtt = icmpPacket.getReplyRtt()
             if icmpPacket.getReplyDropped():
                 droppedReplies += 1
             rttTimes.append(replyRtt) # LEFT OFF HERE
-        print("RTT min:",round(min(rttTimes),2),"RTT max:",round(max(rttTimes),2), "RTT avg:",round((sum(rttTimes)/echoRequests),2))
+            ##########################################
+
+        ##########################################
+        rttMin = round(min(rttTimes))
+        rttMax = round(max(rttTimes))
+        rttAvg = round((sum(rttTimes)/echoRequests))
+        print("="*64)
+        print(f"RTT min:{rttMin} ms\tRTT max: {rttMax} ms\tRTT avg:{rttAvg} ms")
         # 220715 JFB add - is this all right, data member in the ICMP packet, conditional on the 'error' logic under icmppacket/
+        print(f"Packets sent: {echoRequests}, Packets received: {echoRequests-droppedReplies}")
         print(f"Packet loss: { ((echoRequests-(echoRequests-droppedReplies)) / echoRequests)*100}%")
+        print("="*64)
 
     def __sendIcmpTraceRoute(self, host):
         print("sendIcmpTraceRoute Started...") if self.__DEBUG_IcmpHelperLibrary else 0
@@ -662,10 +672,13 @@ def main():
     # Choose one of the following by uncommenting out the line
     # icmpHelperPing.sendPing("209.233.126.254")
     # icmpHelperPing.sendPing("www.google.com")
-    icmpHelperPing.sendPing("oregonstate.edu")
-    # icmpHelperPing.sendPing("gaia.cs.umass.edu")
+    # icmpHelperPing.sendPing("oregonstate.edu")
+    icmpHelperPing.sendPing("gaia.cs.umass.edu")
     # icmpHelperPing.traceRoute("oregonstate.edu")
-
+    ##
+    # icmpHelperPing.sendPing("160.106.123.29") # Canada
+    # icmpHelperPing.sendPing("9.9.9.9") # Switzerland 
+    # icmpHelperPing.sendPing("128.65.210.8") #Germany
 
 if __name__ == "__main__":
     main()
