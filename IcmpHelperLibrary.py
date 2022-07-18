@@ -256,6 +256,8 @@ class IcmpHelperLibrary:
             else:
                 # One or more comparisons fail, set False
                 icmpReplyPacket.setIsValidResponse(False)
+                # "Mangled" packet per: https://edstem.org/us/courses/23561/discussion/1620536
+                self.setReplyDropped()
 
             ########################################
 
@@ -345,6 +347,7 @@ class IcmpHelperLibrary:
 
                     else:
                         print("error") #IS THIS WHERE PACKETS ARE LOST?
+                        # "Lost" packet per: https://edstem.org/us/courses/23561/discussion/1620536
                         self.setReplyDropped() # 220715 JFB
             except timeout:
                 print("  *        *        *        *        *    Request timed out (By Exception).")
