@@ -398,7 +398,6 @@ class IcmpHelperLibrary:
 
         ###################
         # 220718 JFB add this function 
-        # TODO generally working, needs to be revamped
         def sendTraceroute(self, maxHops=30):
             if len(self.__icmpTarget.strip()) <= 0 | len(self.__destinationIpAddress.strip()) <= 0:
                 self.setIcmpTarget("127.0.0.1")
@@ -410,11 +409,12 @@ class IcmpHelperLibrary:
             ttl = 1
             hopCount = 1
             atDestination = False
-            while atDestination is False and hopCount <= maxHops:
+            while hopCount <= maxHops and atDestination is False:
                 mySocket = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)
                 mySocket.settimeout(self.__ipTimeout)
                 mySocket.bind(("", 0))
                 mySocket.setsockopt(IPPROTO_IP, IP_TTL, struct.pack('I', ttl))  # Unsigned int - 4 bytes
+
                 try:
                     mySocket.sendto(b''.join([self.__header, self.__data]), (self.__destinationIpAddress, 0))
                     timeLeft = 2
@@ -423,17 +423,21 @@ class IcmpHelperLibrary:
                     whatReady = select.select([mySocket], [], [], timeLeft)
                     endSelect = time.time()
                     howLongInSelect = (endSelect - startedSelect)
+
                     if whatReady[0] == []: # timeout
                         print(f"{hopCount}\t*\t*\t*\tRequest timed out.") 
                         hopCount += 1
+
                     else:
                         recvPacket, addr = mySocket.recvfrom(1024)  # recvPacket - bytes object representing data received
                         timeReceived = time.time()
                         self.setReplyRtt((timeReceived - pingStartTime) * 1000)
                         timeLeft = timeLeft - howLongInSelect
-                        if timeLeft <= 0:
-                            print(f"{hopCount}\t*\t*\t*\tRequest timed out.")                    
-                        else:
+
+                        if timeLeft <= 0: # timeout
+                            print(f"{hopCount}\t*\t*\t*\tRequest timed out.")    
+
+                        else: # found intermediary host
                             print(f"{hopCount}\t{int(round(self.getReplyRtt(), 0))}ms\t{addr[0]}\t{getfqdn(addr[0])}")
                             if str(addr[0]) == self.getDestinationIpAddress():
                                 atDestination = True
@@ -486,16 +490,12 @@ class IcmpHelperLibrary:
         # ############################################################################################################ #
         __recvPacket = b''
         __isValidResponse = False
-        ############################
-        # 220712 JFB Added 
         # Create variables within the IcmpPacket_EchoReply class that identify whether 
         # each value that can be obtained from the class is valid. 
-        __icmpIdentifier_isValid = False
-        __icmpSequenceNumber_isValid = False
-        __icmpData_isValid = False
-        ############################
-        # 220714 JFB Added 
-        __replyRtt = 0 
+        __icmpIdentifier_isValid = False # 220712 Added 
+        __icmpSequenceNumber_isValid = False # 220712 Added 
+        __icmpData_isValid = False # 220712 Added 
+        __replyRtt = 0  # 220714 Added 
 
         # ############################################################################################################ #
         # IcmpPacket_EchoReply Constructors                                                                            #
@@ -563,20 +563,7 @@ class IcmpHelperLibrary:
             # This accounts for bytes 36 to the end of the packet.
             return self.__recvPacket[36:].decode('utf-8')
 
-        #########################
-        # 220712 JFB added 
-        # TODO add some documentation here 
-            
-        def setIcmpSequenceNumber_isValid(self):
-            self.__icmpSequenceNumber_isValid = True
-
-        def setIcmpIdentifier_isValid(self):
-            self.__icmpIdentifier_isValid = True
-            
-        def setIcmpData_isValid(self):
-            self.__icmpData_isValid = True 
-
-        #  getter functions for each validation variable 
+        #  220712 getter functions for each validation variable 
         def getIcmpSequenceNumber_isValid(self):
             return self.__icmpSequenceNumber_isValid
 
@@ -586,19 +573,12 @@ class IcmpHelperLibrary:
         def getIcmpData_isValid(self):
             return self.__icmpData_isValid 
 
-        #########################
-
-        # 220714 JFB add
-        def getReplyRtt(self):
-            return self.__replyRtt
-            
-        def setReplyRtt(self, rtt):
-            self.__replyRtt = rtt
-
-        ##########################
-
         def isValidResponse(self):
             return self.__isValidResponse
+
+        def getReplyRtt(self):         # 220714 added
+            return self.__replyRtt
+
 
         # ############################################################################################################ #
         # IcmpPacket_EchoReply Setters                                                                                 #
@@ -609,6 +589,19 @@ class IcmpHelperLibrary:
         # ############################################################################################################ #
         def setIsValidResponse(self, booleanValue):
             self.__isValidResponse = booleanValue
+
+        def setIcmpSequenceNumber_isValid(self):         # 220712 added 
+            self.__icmpSequenceNumber_isValid = True
+
+        def setIcmpIdentifier_isValid(self):         # 220712 added 
+            self.__icmpIdentifier_isValid = True
+            
+        def setIcmpData_isValid(self):         # 220712 added 
+            self.__icmpData_isValid = True 
+           
+        def setReplyRtt(self, rtt):         # 220712 added 
+            self.__replyRtt = rtt
+
 
         # ############################################################################################################ #
         # IcmpPacket_EchoReply Private Functions                                                                       #
@@ -649,10 +642,7 @@ class IcmpHelperLibrary:
                   )
                  )
 
-            #220713 JFB Added 
-            # Print results of reply validation with debug
-            # TODO these should be getters 
-            # TODO work on the conditional debugs below 
+            #220713 Added 
             print("\nVALIDATION RESULTS")
             for i in (  [self.__icmpSequenceNumber_isValid, "ICMP sequence number",icmpValidationData[0], self.getIcmpSequenceNumber()],
                         [self.__icmpIdentifier_isValid, "ICMP identifier", icmpValidationData[1], self.getIcmpIdentifier()],
@@ -663,8 +653,7 @@ class IcmpHelperLibrary:
                     else:
                         print(f"\033[91m{i[1]} is NOT valid.\n\t* Actual reply: \t{i[3]}\n\t* Expected reply: \t{i[2]}\033[00m ")
             print("-"*66)
-                        # f"\tExpected reply: {IcmpPacket.getDataRaw()}\n\tActual reply:{self.getIcmpData()}\n"
-            #######################
+
 
     # ################################################################################################################ #
     # Class IcmpHelperLibrary                                                                                          #
@@ -779,15 +768,13 @@ def main():
     # icmpHelperPing.sendPing("www.google.com")
     # icmpHelperPing.sendPing("oregonstate.edu")
     # icmpHelperPing.sendPing("gaia.cs.umass.edu")
-    icmpHelperPing.traceRoute("oregonstate.edu")
-    icmpHelperPing.traceRoute("jamesbush.dev")
-    icmpHelperPing.traceRoute("eff.org")
-    icmpHelperPing.traceRoute("lemonde.fr")
+    # icmpHelperPing.traceRoute("oregonstate.edu")
 
+
+    # icmpHelperPing.traceRoute("cooks.org.kp") # North Korea 
     # icmpHelperPing.sendPing("160.106.123.29") # Canada
     # icmpHelperPing.sendPing("9.9.9.9") # Switzerland 
-    icmpHelperPing.traceRoute("9.9.9.9") # Switzerland 
-
+    # icmpHelperPing.traceRoute("9.9.9.9") # Switzerland 
     # icmpHelperPing.sendPing("128.65.210.8") #Germany
     # icmpHelperPing.sendPing("127.0.0.2")
 if __name__ == "__main__":
