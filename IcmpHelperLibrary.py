@@ -248,11 +248,20 @@ class IcmpHelperLibrary:
             if self.getDataRaw() == icmpReplyPacket.getIcmpData():
                 icmpReplyPacket.setIcmpData_isValid()
 
+            # Check checksum
+            # Accounting for difference in IcmpType (8 for Icmp Packet / 0 for Echo Reply)...
+            # ...difference in the checksum will be 8 * 256 = 2048. Add this to validate checksum. 
+            # https://edstem.org/us/courses/23561/discussion/1611910
+            typeDifference =  (self.getIcmpType() - icmpReplyPacket.getIcmpType()) * 256 #256
+            if typeDifference + self.getPacketChecksum() == icmpReplyPacket.getIcmpHeaderChecksum():
+                icmpReplyPacket.setIcmpChecksum_isValid()
+
             # Set the valid data variable in the IcmpPacketgit_EchoReply class based on the
             # outcome of the data comparison 
             if icmpReplyPacket.getIcmpIdentifier_isValid() and \
                 icmpReplyPacket.getIcmpSequenceNumber_isValid() and \
-                icmpReplyPacket.getIcmpData_isValid():
+                icmpReplyPacket.getIcmpData_isValid() and \
+                icmpReplyPacket.getIcmpChecksum_isValid():
                 icmpReplyPacket.setIsValidResponse(True) # All true is valid response 
             # One or more comparisons fail, set False
             else:
@@ -382,7 +391,8 @@ class IcmpHelperLibrary:
                         icmpPacketSequenceNumber = self.getPacketSequenceNumber() # 220713 added
                         icmpPacketIdentifer = self.getPacketIdentifier() # 220713 added
                         icmpPacketData = self.getDataRaw() # 220713 added
-                        icmpValidationData = [icmpPacketSequenceNumber,icmpPacketIdentifer,icmpPacketData] # 220713 added
+                        icmpPacketChecksum = self.getPacketChecksum()
+                        icmpValidationData = [icmpPacketSequenceNumber,icmpPacketIdentifer,icmpPacketData,icmpPacketChecksum] # 220713 added
                         icmpReplyPacket.printResultToConsole(self.getTtl(), timeReceived, addr, icmpValidationData) #220713 added icmpValidationData
                         self.setReplyRtt(icmpReplyPacket.getReplyRtt())#220714 added
                         return      # Echo reply is the end and therefore should return
@@ -495,6 +505,7 @@ class IcmpHelperLibrary:
         __icmpIdentifier_isValid = False # 220712 Added 
         __icmpSequenceNumber_isValid = False # 220712 Added 
         __icmpData_isValid = False # 220712 Added 
+        __icmpChecksum_isValid = False 
         __replyRtt = 0  # 220714 Added 
 
         # ############################################################################################################ #
@@ -573,6 +584,9 @@ class IcmpHelperLibrary:
         def getIcmpData_isValid(self):
             return self.__icmpData_isValid 
 
+        def getIcmpChecksum_isValid(self):      # 220719 added
+            return self.__icmpChecksum_isValid
+
         def isValidResponse(self):
             return self.__isValidResponse
 
@@ -598,6 +612,9 @@ class IcmpHelperLibrary:
             
         def setIcmpData_isValid(self):         # 220712 added 
             self.__icmpData_isValid = True 
+
+        def setIcmpChecksum_isValid(self):      # 220719 added
+            self.__icmpChecksum_isValid = True
            
         def setReplyRtt(self, rtt):         # 220712 added 
             self.__replyRtt = rtt
@@ -646,7 +663,8 @@ class IcmpHelperLibrary:
             print("\nVALIDATION RESULTS")
             for i in (  [self.__icmpSequenceNumber_isValid, "ICMP sequence number",icmpValidationData[0], self.getIcmpSequenceNumber()],
                         [self.__icmpIdentifier_isValid, "ICMP identifier", icmpValidationData[1], self.getIcmpIdentifier()],
-                        [self.__icmpData_isValid, "ICMP data", icmpValidationData[2], self.getIcmpData()]
+                        [self.__icmpData_isValid, "ICMP data", icmpValidationData[2], self.getIcmpData()],
+                        [self.__icmpChecksum_isValid, "ICMP checksum", icmpValidationData[3], self.getIcmpHeaderChecksum()]
                     ):
                     if i[0] is True:
                         print(f"{i[1]} is valid.")
@@ -767,7 +785,7 @@ def main():
     # icmpHelperPing.sendPing("209.233.126.254")
     # icmpHelperPing.sendPing("www.google.com")
     # icmpHelperPing.sendPing("oregonstate.edu")
-    # icmpHelperPing.sendPing("gaia.cs.umass.edu")
+    icmpHelperPing.sendPing("gaia.cs.umass.edu")
     # icmpHelperPing.traceRoute("oregonstate.edu")
 
 
