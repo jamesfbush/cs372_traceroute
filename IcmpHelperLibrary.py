@@ -252,7 +252,7 @@ class IcmpHelperLibrary:
             # Accounting for difference in IcmpType (8 for Icmp Packet / 0 for Echo Reply)...
             # ...difference in the checksum will be 8 * 256 = 2048. Add this to validate checksum. 
             # https://edstem.org/us/courses/23561/discussion/1611910
-            typeDifference =  (self.getIcmpType() - icmpReplyPacket.getIcmpType()) * 256 #256
+            typeDifference =  (self.getIcmpType() - icmpReplyPacket.getIcmpType()) * 256 
             if typeDifference + self.getPacketChecksum() == icmpReplyPacket.getIcmpHeaderChecksum():
                 icmpReplyPacket.setIcmpChecksum_isValid()
 
@@ -351,7 +351,8 @@ class IcmpHelperLibrary:
 
                 else:
                     # Fetch the ICMP type and code from the received packet
-                    icmpType, icmpCode = recvPacket[20:22]
+                    # icmpType, icmpCode = recvPacket[20:22]
+                    icmpType, icmpCode = 3, 3
                     
                     # "Modify the Pinger program to parse the ICMP response error codes and 
                     # ...display the corresponding error results to the user." 
@@ -407,7 +408,7 @@ class IcmpHelperLibrary:
                 mySocket.close()
 
         ###################
-        # 220718 JFB add this function 
+        # 220718 added
         def sendTraceroute(self, maxHops=30):
             if len(self.__icmpTarget.strip()) <= 0 | len(self.__destinationIpAddress.strip()) <= 0:
                 self.setIcmpTarget("127.0.0.1")
@@ -742,7 +743,7 @@ class IcmpHelperLibrary:
         # Build code for trace route here
 
         # Set maximum number of hops
-        maxHops = 20
+        maxHops = 30
 
         icmpPacket = IcmpHelperLibrary.IcmpPacket()
         randomIdentifier = (os.getpid() & 0xffff)      # Get as 16 bit number - Limit based on ICMP header standards
@@ -780,20 +781,18 @@ class IcmpHelperLibrary:
 def main():
     icmpHelperPing = IcmpHelperLibrary()
 
-
     # Choose one of the following by uncommenting out the line
     # icmpHelperPing.sendPing("209.233.126.254")
     # icmpHelperPing.sendPing("www.google.com")
     # icmpHelperPing.sendPing("oregonstate.edu")
     icmpHelperPing.sendPing("gaia.cs.umass.edu")
-    # icmpHelperPing.traceRoute("oregonstate.edu")
-
-
-    # icmpHelperPing.traceRoute("cooks.org.kp") # North Korea 
-    # icmpHelperPing.sendPing("160.106.123.29") # Canada
     # icmpHelperPing.sendPing("9.9.9.9") # Switzerland 
-    # icmpHelperPing.traceRoute("9.9.9.9") # Switzerland 
     # icmpHelperPing.sendPing("128.65.210.8") #Germany
-    # icmpHelperPing.sendPing("127.0.0.2")
+
+    # icmpHelperPing.traceRoute("oregonstate.edu")
+    # icmpHelperPing.traceRoute("gaia.cs.umass.edu")
+    # icmpHelperPing.traceRoute("9.9.9.9") # Switzerland 
+    # icmpHelperPing.traceRoute("128.65.210.8") #Germany
+
 if __name__ == "__main__":
     main()
